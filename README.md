@@ -89,3 +89,11 @@ Se vastaa myös 503 rinnakkaisiin pyyntöihin kuten oikea kamera.
 | `canont/cli.py` | komentorivi |
 | `tools/mock_camera.py` | valekamera kehitykseen ja testeihin |
 | `tools/canon_ble.py` | kokeilu: kameran herätys Bluetoothilla (`pip install -e '.[ble]'`), ei toimi M50 II:lla |
+
+## Lisenssi
+
+GPL-3.0-or-later, katso [LICENSE](LICENSE). Saat käyttää, muokata ja jakaa ohjelmaa, kunhan
+jaetut versiot julkaistaan samalla lisenssillä lähdekoodeineen.
+
+Mukana olevat fontit ovat omilla lisensseillään: Roboto (SIL Open Font License 1.1) ja
+Material Symbols (Apache 2.0).
