@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kamerasiirto</title>
+<link rel="stylesheet" href="/static/style.css">
+<script>
+  try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
+</script>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <div class="brand"><span class="icon">photo_camera</span><h1 style="font-size:inherit">Kamerasiirto</h1></div>
+    <div class="camera" id="camera"><span class="dot"></span><span id="camera-text">Yhdistetään…</span></div>
+    <button class="btn ghost" id="btn-viewfinder" title="Etsin: kameran live-kuva (E)"><span class="icon">videocam</span><span class="hide-sm">Etsin</span></button>
+    <button class="btn ghost icon-only" id="btn-refresh" title="Päivitä lista (R)"><span class="icon">refresh</span></button>
+    <button class="btn ghost icon-only" id="btn-settings" title="Asetukset"><span class="icon">settings</span></button>
+    <button class="btn ghost icon-only" id="btn-theme" title="Vaihda teema"><span class="icon">dark_mode</span></button>
+  </div>
+  <div class="toolbar">
+    <div class="bar">
+      <div class="chips" id="filters">
+        <button class="chip" data-kind="all" aria-pressed="true">Kaikki<span class="n"></span></button>
+        <button class="chip" data-kind="jpeg" aria-pressed="false">JPEG<span class="n"></span></button>
+        <button class="chip" data-kind="raw" aria-pressed="false">RAW<span class="n"></span></button>
+        <button class="chip" data-kind="video" aria-pressed="false">Video<span class="n"></span></button>
+      </div>
+      <button class="chip" id="only-new" aria-pressed="false" title="Piilota jo valittuun kohteeseen siirretyt">Vain uudet<span class="n"></span></button>
+      <button class="chip live" id="btn-live" aria-pressed="false" title="Näytä jokainen uusi kuva heti isona (L)"><span class="live-dot"></span>Live</button>
+      <span class="spacer"></span>
+      <span class="count" id="sel-count"></span>
+      <button class="btn ghost" id="btn-select-new" title="Valitse kaikki siirtämättömät (N)"><span class="icon">new_releases</span><span class="hide-sm">Valitse uudet</span></button>
+      <button class="btn ghost icon-only" id="btn-select-all" title="Valitse kaikki näkyvät (Ctrl+A)"><span class="icon">select_all</span></button>
+      <button class="btn ghost icon-only" id="btn-select-none" title="Tyhjennä valinta (Esc)"><span class="icon">deselect</span></button>
+      <button class="btn ghost danger" id="btn-delete" disabled title="Poista valitut kamerasta (Delete)"><span class="icon">delete</span><span class="hide-sm">Poista</span></button>
+      <div class="seg" id="target" role="radiogroup" aria-label="Siirtokohde">
+        <button type="button" role="radio" data-target="local" aria-checked="true" title="Siirrä tämän koneen kansioon"><span class="icon">computer</span><span class="hide-sm">Kone</span></button>
+        <button type="button" role="radio" data-target="nas" aria-checked="false" title="Siirrä NAS:lle"><span class="icon">dns</span><span class="hide-sm">NAS</span></button>
+      </div>
+      <button class="btn primary" id="btn-download" disabled><span class="icon">download</span>Siirrä</button>
+    </div>
+  </div>
+</header>
+
+<main id="main"></main>
+
+<section class="transfer" id="transfer" hidden aria-live="polite">
+  <div class="top">
+    <span class="icon" id="tr-icon">download</span>
+    <span class="title" id="tr-title"></span>
+    <button class="btn" id="tr-cancel">Keskeytä</button>
+    <button class="btn ghost icon-only" id="tr-close" title="Sulje" hidden><span class="icon">close</span></button>
+  </div>
+  <div class="progress"><div id="tr-bar"></div></div>
+  <div class="meta"><span id="tr-bytes"></span><span id="tr-speed"></span><span class="cur" id="tr-cur"></span></div>
+  <ul class="errors" id="tr-errors" hidden></ul>
+</section>
+
+<div class="lightbox" id="lightbox" hidden>
+  <div class="lb-bar">
+    <span class="lb-live" id="lb-live" hidden><span class="live-dot"></span>LIVE</span>
+    <span class="t" id="lb-title"></span>
+    <button class="btn" id="lb-select"><span class="icon">check_circle</span><span>Valitse</span></button>
+    <button class="btn icon-only" id="lb-close" title="Sulje (Esc)"><span class="icon">close</span></button>
+  </div>
+  <div class="stage">
+    <span class="icon spin" id="lb-spin" style="font-size:40px">hourglass_empty</span>
+    <img id="lb-img" alt="">
+    <button class="btn icon-only nav prev" id="lb-prev" title="Edellinen (←)"><span class="icon">chevron_left</span></button>
+    <button class="btn icon-only nav next" id="lb-next" title="Seuraava (→)"><span class="icon">chevron_right</span></button>
+  </div>
+  <div class="lb-exif" id="lb-exif" aria-live="polite"></div>
+</div>
+
+<dialog id="settings">
+  <form method="dialog" id="settings-form">
+    <h3>Asetukset</h3>
+    <label for="set-host">Kameran IP-osoite</label>
+    <input id="set-host" placeholder="tyhjä = etsi automaattisesti" autocomplete="off">
+    <label for="set-dest-local">Paikallinen kansio</label>
+    <input id="set-dest-local" autocomplete="off">
+    <label for="set-dest-nas">NAS-kansio</label>
+    <input id="set-dest-nas" placeholder="esim. /run/user/…/gvfs/smb-share:…/Photos/Canon" autocomplete="off">
+    <label for="set-layout">Alikansiot</label>
+    <select id="set-layout">
+      <option value="%Y-%m-%d">Päivän mukaan (2026-10-29)</option>
+      <option value="%Y/%m/%d">Vuosi / kk / pv (2026/10/29)</option>
+      <option value="%Y/%Y-%m">Vuosi / kuukausi (2026/2026-10)</option>
+      <option value=".">Ei alikansioita</option>
+    </select>
+    <p class="hint">Kuvan kuvauspäivä määrää alikansion. Jo siirretyt tunnistetaan nimen ja koon perusteella, kummallekin kohteelle erikseen. NAS-kansio on NAS:n liitos tiedostonhallinnasta (SMB).</p>
+    <div class="actions">
+      <button class="btn" value="cancel">Peruuta</button>
+      <button class="btn primary" value="save" id="set-save">Tallenna</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="viewfinder" id="viewfinder" hidden>
+  <div class="vf-bar">
+    <span class="vf-title"><span class="icon">videocam</span>Etsin</span>
+    <div class="vf-settings" id="vf-settings"></div>
+    <span class="spacer"></span>
+    <span class="vf-fps" id="vf-fps"></span>
+    <div class="seg dark" id="vf-size" role="radiogroup" aria-label="Live-kuvan koko">
+      <button type="button" role="radio" data-size="small" title="480×320, noin 10 kuvaa/s">Sujuva</button>
+      <button type="button" role="radio" data-size="medium" title="960×640, noin 5 kuvaa/s">Tarkka</button>
+    </div>
+    <button class="btn icon-only" id="vf-close" title="Sulje (Esc)"><span class="icon">close</span></button>
+  </div>
+  <div class="vf-stage" id="vf-stage">
+    <img id="vf-img" alt="Kameran live-kuva">
+    <div class="vf-msg" id="vf-msg">Käynnistetään live-kuvaa…</div>
+  </div>
+  <div class="vf-bottom">
+    <canvas id="vf-hist" width="256" height="72" aria-label="Histogrammi"></canvas>
+    <button class="vf-shutter" id="vf-shutter" title="Laukaise (välilyönti)"><span class="icon">camera</span></button>
+    <button class="vf-last" id="vf-last" hidden title="Viimeisin kuva – avaa isona"><img id="vf-last-img" alt=""></button>
+  </div>
+</div>
+
+<dialog id="confirm-delete">
+  <form method="dialog">
+    <h3 id="del-title"></h3>
+    <p>Tiedostot poistetaan kameran muistikortilta. Poistettuja ei saa takaisin.</p>
+    <p class="warn-box" id="del-warn" hidden><span class="icon">warning</span><span id="del-warn-text"></span></p>
+    <div class="actions">
+      <button class="btn" value="cancel" autofocus>Peruuta</button>
+      <button class="btn danger-fill" value="delete" id="del-ok"><span class="icon">delete</span>Poista</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

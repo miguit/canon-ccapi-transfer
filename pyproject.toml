@@ -1,0 +1,23 @@
+[project]
+name = "canont"
+version = "0.1.0"
+description = "Kuvat Canon-kamerasta langattomasti (CCAPI) selainkäyttöliittymällä"
+requires-python = ">=3.10"
+dependencies = ["fastapi", "uvicorn", "requests"]
+
+[project.optional-dependencies]
+dev = ["pytest", "httpx", "pillow"]
+ble = ["bleak"]  # tools/canon_ble.py (experimental Bluetooth wake-up)
+
+[project.scripts]
+canont = "canont.cli:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["canont"]
+
+[tool.setuptools.package-data]
+canont = ["static/*"]
